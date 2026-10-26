@@ -25,7 +25,7 @@ Fill in **Where** as each measure is built.
 | 7.2.5 | Security headers; API accepts calls only from the UniLearn website | Clickjacking, cross-site calls | A05 System Configuration | code | |
 | 7.2.6 | Uploads: PDF only, max 10 MB | Harmful files | A04 File Management | code | |
 | 7.2.7 | Generic error message to users; details go to the logs | Leaking internals | A05 Error Handling | code | |
-| 7.2.8 | Secrets in Render settings; `.env` never in GitHub | Leaked keys | A02, A05 | code + config | |
+| 7.2.8 | Secrets in Render settings; `.env` never in GitHub | Leaked keys | A02, A05 | code + config | `.gitignore:4`, `server/.env.example`; GitHub push protection (SETUP_GUIDE 3.3) |
 | **7.3 Database** | | | | | |
 | 7.3.1 | Atlas IP access list allows only Render's outbound IPs | Direct DB attacks | A05 Database Security | config | |
 | 7.3.2 | App DB user: readWrite on the UniLearn DB only, long generated password | Full takeover if the password leaks | A01, A07 | config | |
@@ -38,7 +38,7 @@ Fill in **Where** as each measure is built.
 | 7.4.2 | Database accepts connections only from Render (see 7.3.1) | Direct DB attacks | — | config | |
 | 7.4.3 | Render manages OS updates, server firewall, physical security (shared responsibility) | Unpatched or exposed servers | — | config | |
 | 7.4.4 | 2FA on the GitHub, Render, Atlas, Clerk and Cloudflare accounts | Takeover of control accounts | — | process | |
-| 7.4.5 | Dependabot + `npm audit` on every push | Vulnerable packages | A06 | config | |
+| 7.4.5 | Dependabot + `npm audit` on every push | Vulnerable packages | A06 | config | `.github/workflows/security-audit.yml`, `.github/dependabot.yml` |
 | 7.4.6 | Render deploys only from `main` | Unfinished code going live | — | config | |
 | **7.5 Users** | | | | | |
 | 7.5.1 | MFA required for admins and instructors | Phishing / account takeover | A07 | code + config | |
