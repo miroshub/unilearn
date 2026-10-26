@@ -1,0 +1,30 @@
+# 🔒 SECURITY 7.4.5 — Check every push for packages with known vulnerabilities (OWASP A06)
+# The check fails (red ❌ on GitHub) if any package has a "high" or "critical" vulnerability.
+name: Security audit
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v7
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Audit server packages
+        run: npm audit --audit-level=high
+        working-directory: server
+
+      - name: Audit client packages
+        run: npm audit --audit-level=high
+        working-directory: client
