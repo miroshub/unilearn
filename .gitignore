@@ -17,5 +17,6 @@ dist/
 
 # Editor and tool folders
 .vscode/
+graphify-out/
 .DS_Store
 Thumbs.db
