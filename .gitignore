@@ -1,0 +1,21 @@
+# Installed packages (recreated with npm install)
+node_modules/
+
+# 🔒 SECURITY 7.2.8 — Secrets never go to GitHub (OWASP A02, A05)
+# Real keys live in .env locally and in Render's settings in production.
+.env
+.env.*
+!.env.example
+
+# Uploads and logs can contain personal data
+uploads/
+logs/
+*.log
+
+# Build output (Render builds it again from the source)
+dist/
+
+# Editor and tool folders
+.vscode/
+.DS_Store
+Thumbs.db

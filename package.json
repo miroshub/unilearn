@@ -1,0 +1,14 @@
+{
+  "name": "unilearn",
+  "version": "0.1.0",
+  "private": true,
+  "description": "UniLearn: a secure learning management system (course project)",
+  "scripts": {
+    "install-all": "npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix client",
+    "start": "npm start --prefix server"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}
