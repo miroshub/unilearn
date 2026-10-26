@@ -20,3 +20,7 @@ dist/
 graphify-out/
 .DS_Store
 Thumbs.db
+
+# Private working notes (kept on Omar's PC only)
+DECISIONS.md
+SETUP_GUIDE.md
