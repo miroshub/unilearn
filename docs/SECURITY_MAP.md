@@ -20,17 +20,17 @@ Fill in **Where** as each measure is built.
 | **7.2 Back end** | | | | | |
 | 7.2.1 | Sign-in check on every route | Anonymous access | A07 Authentication | code | |
 | 7.2.2 | Role + ownership check on every route | Changing grades, seeing others' data | A01 Access Control | code | |
-| 7.2.3 | Request data checked against a schema; unknown fields rejected | Malicious input, self-assigned roles | A03 Input Validation | code | |
-| 7.2.4 | Limit on requests per minute | Flooding, password guessing | A04, A07 | code | |
-| 7.2.5 | Security headers; API accepts calls only from the UniLearn website | Clickjacking, cross-site calls | A05 System Configuration | code | |
+| 7.2.3 | Request data checked against a schema; unknown fields rejected | Malicious input, self-assigned roles | A03 Input Validation | code | `server/models/*.js:4` (`strict: 'throw'` on all 8 schemas); per-route checks added with each route |
+| 7.2.4 | Limit on requests per minute | Flooding, password guessing | A04, A07 | code | `server/middleware/security.js:11` |
+| 7.2.5 | Security headers; API accepts calls only from the UniLearn website | Clickjacking, cross-site calls | A05 System Configuration | code | Headers: `server/middleware/security.js:6`; origin check: `server/middleware/security.js:30` |
 | 7.2.6 | Uploads: PDF only, max 10 MB | Harmful files | A04 File Management | code | |
-| 7.2.7 | Generic error message to users; details go to the logs | Leaking internals | A05 Error Handling | code | |
+| 7.2.7 | Generic error message to users; details go to the logs | Leaking internals | A05 Error Handling | code | `server/middleware/errors.js:32` |
 | 7.2.8 | Secrets in Render settings; `.env` never in GitHub | Leaked keys | A02, A05 | code + config | `.gitignore:4`, `server/.env.example`; GitHub push protection (SETUP_GUIDE 3.3) |
 | **7.3 Database** | | | | | |
 | 7.3.1 | Atlas IP access list allows only Render's outbound IPs | Direct DB attacks | A05 Database Security | config | |
-| 7.3.2 | App DB user: readWrite on the UniLearn DB only, long generated password | Full takeover if the password leaks | A01, A07 | config | |
-| 7.3.3 | Encryption in transit (TLS) and at rest (Atlas default) | Data read in transit or from disk | A02 Data Protection | config | |
-| 7.3.4 | Query filters cleaned; data shapes fixed by Mongoose schemas | NoSQL injection | A03 Database Security | code | |
+| 7.3.2 | App DB user: readWrite on the UniLearn DB only, long generated password | Full takeover if the password leaks | A01, A07 | config | Atlas DB user (SETUP_GUIDE 4.3); `dbName` in `server/db.js:17` |
+| 7.3.3 | Encryption in transit (TLS) and at rest (Atlas default) | Data read in transit or from disk | A02 Data Protection | config | `tls: true` in `server/db.js:19`; at rest = Atlas default (SETUP_GUIDE 4.6) |
+| 7.3.4 | Query filters cleaned; data shapes fixed by Mongoose schemas | NoSQL injection | A03 Database Security | code | `$` keys refused: `server/middleware/security.js:58`; `strictQuery: 'throw'`: `server/models/*.js:4` |
 | 7.3.5 | Only data needed for teaching is stored | Size of any breach | A02 Data Protection | code | |
 | 7.3.6 | Weekly database backup | Data loss | Recovery | process | |
 | **7.4 Network and hosting** | | | | | |
@@ -48,9 +48,9 @@ Fill in **Where** as each measure is built.
 | 7.5.5 | Accounts disabled when people leave | Former users keeping access | A01 | code | |
 | 7.5.6 | One-page security tips guide for users | Phishing, sharing codes | — | process | |
 | **7.6 Logging** | | | | | |
-| 7.6.1 | Audit log: grade changes (old + new), role changes, account creation/removal | Untraceable changes (repudiation) | A09 | code | |
-| 7.6.2 | Application log: denied access, errors, blocked requests (Render logs) | Unnoticed attacks | A09 | code | |
+| 7.6.1 | Audit log: grade changes (old + new), role changes, account creation/removal | Untraceable changes (repudiation) | A09 | code | Collection: `server/models/AuditLog.js:1` (entries written from Phase 4) |
+| 7.6.2 | Application log: denied access, errors, blocked requests (Render logs) | Unnoticed attacks | A09 | code | `server/logger.js:38`; called from `server/middleware/security.js` and `errors.js` |
 | 7.6.3 | Sign-in log: sign-ins, failures, MFA events (Clerk dashboard) | Unnoticed account attacks | A09 | config | |
 | 7.6.4 | Attack log: blocked requests, bot traffic (Cloudflare) | Unnoticed attacks | A09 | config | |
 | 7.6.5 | Deployment log: pushes, checks, deploys (GitHub + Render) | Untraceable releases | A09 | config | |
-| 7.6.6 | Logs never contain passwords or tokens; logs reviewed weekly | Secrets leaking via logs | A09 | code + process | |
+| 7.6.6 | Logs never contain passwords or tokens; logs reviewed weekly | Secrets leaking via logs | A09 | code + process | `server/logger.js:3` (weekly review: Phase 9) |
