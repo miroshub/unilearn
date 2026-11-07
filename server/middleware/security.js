@@ -1,7 +1,8 @@
 // Security checks that run before any API route.
+const crypto = require('crypto');
 const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
-const { logWarning } = require('../logger');
+const { logInfo, logWarning } = require('../logger');
 
 // Clerk's address for this app, read from the publishable key.
 // The key is "pk_test_" + base64("<name>.clerk.accounts.dev$"), so decoding it gives the address.
@@ -89,4 +90,55 @@ function rejectOperatorKeys(req, res, next) {
   next();
 }
 
-module.exports = { securityHeaders, apiRateLimit, allowedOrigins, checkOrigin, rejectOperatorKeys };
+// The secret Cloudflare adds to every request, plus the previous one while it is being changed (D25)
+const originSecrets = [process.env.ORIGIN_SECRET, process.env.ORIGIN_SECRET_OLD].filter(Boolean);
+
+// True if the two texts are equal. Both are hashed first so they have the same length,
+// then compared in constant time, so an attacker can't guess the secret one letter at a time.
+function isSameSecret(sent, expected) {
+  const sentHash = crypto.createHash('sha256').update(sent).digest();
+  const expectedHash = crypto.createHash('sha256').update(expected).digest();
+  return crypto.timingSafeEqual(sentHash, expectedHash);
+}
+
+// 🔒 SECURITY 7.4.1 — Only Cloudflare may reach the app, so nobody can skip the WAF (OWASP A05)
+// Cloudflare adds a secret "X-Origin-Verify" header to every request it forwards (SETUP_GUIDE 7.8).
+// A request that comes straight to Render has no such header, so it is refused.
+// Only in production: on your PC there is no Cloudflare in front.
+function requireCloudflare(req, res, next) {
+  if (process.env.NODE_ENV !== 'production') {
+    return next();
+  }
+  const sent = req.get('X-Origin-Verify') || '';
+  // With no secret configured, nothing matches, so every request is refused (fails closed)
+  if (!originSecrets.some((secret) => isSameSecret(sent, secret))) {
+    logWarning('Blocked request that did not come through Cloudflare', { ip: req.ip, method: req.method, path: req.path });
+    return res.status(403).type('text/plain').send('Forbidden');
+  }
+  next();
+}
+
+// Temporary check for "trust proxy" (SETUP_GUIDE 7.10): logs which IP Express thinks the
+// visitor has, next to the raw proxy headers, so we can prove req.ip is the real visitor.
+// Only runs while LOG_IP_CHECK=true, because IP addresses are personal data.
+function logVisitorIp(req, res, next) {
+  if (process.env.LOG_IP_CHECK === 'true') {
+    logInfo('IP check', {
+      ip: req.ip,
+      forwardedFor: req.get('X-Forwarded-For'),
+      cloudflareIp: req.get('CF-Connecting-IP'),
+      path: req.path,
+    });
+  }
+  next();
+}
+
+module.exports = {
+  securityHeaders,
+  apiRateLimit,
+  allowedOrigins,
+  checkOrigin,
+  rejectOperatorKeys,
+  requireCloudflare,
+  logVisitorIp,
+};
