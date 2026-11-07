@@ -3,10 +3,33 @@ const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const { logWarning } = require('../logger');
 
+// Clerk's address for this app, read from the publishable key.
+// The key is "pk_test_" + base64("<name>.clerk.accounts.dev$"), so decoding it gives the address.
+function getClerkAddress() {
+  const encoded = (process.env.CLERK_PUBLISHABLE_KEY || '').split('_')[2] || '';
+  const host = Buffer.from(encoded, 'base64').toString('utf8').replace('$', '');
+  return host ? `https://${host}` : '';
+}
+// As a list, so it is simply left out when no key is set yet
+const clerkAddress = getClerkAddress() ? [getClerkAddress()] : [];
+
 // 🔒 SECURITY 7.2.5 — Standard security headers (OWASP A05)
 // helmet adds headers like Content-Security-Policy (only load scripts from our own site)
 // and X-Frame-Options (other sites can't put UniLearn in a frame = no clickjacking).
-const securityHeaders = helmet();
+// The only outside site allowed is our own Clerk address, for the sign-in screens (DECISIONS D31).
+const securityHeaders = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      'script-src': ["'self'", ...clerkAddress],
+      'connect-src': ["'self'", ...clerkAddress],
+      'img-src': ["'self'", 'data:', 'https://img.clerk.com'],
+      'worker-src': ["'self'", 'blob:'],
+      // Clerk's sign-in box sets its own styles at runtime, so inline styles must be allowed.
+      // Inline *scripts* stay blocked, which is what stops XSS.
+      'style-src': ["'self'", "'unsafe-inline'"],
+    },
+  },
+});
 
 // 🔒 SECURITY 7.2.4 — Limit on requests per minute (OWASP A04, A07)
 // Each IP address gets 100 API calls per minute; after that it gets 429 "Too many requests".
@@ -66,4 +89,4 @@ function rejectOperatorKeys(req, res, next) {
   next();
 }
 
-module.exports = { securityHeaders, apiRateLimit, checkOrigin, rejectOperatorKeys };
+module.exports = { securityHeaders, apiRateLimit, allowedOrigins, checkOrigin, rejectOperatorKeys };

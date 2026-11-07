@@ -3,6 +3,8 @@ const path = require('path');
 const express = require('express');
 const { securityHeaders, apiRateLimit, checkOrigin, rejectOperatorKeys } = require('./middleware/security');
 const { apiNotFound, errorHandler } = require('./middleware/errors');
+const { readClerkSession } = require('./middleware/auth');
+const meRoutes = require('./routes/me');
 
 const app = express();
 
@@ -23,8 +25,11 @@ app.use('/api', checkOrigin);
 // Read JSON bodies, max 100 KB (PDF uploads get their own limit in Phase 7)
 app.use('/api', express.json({ limit: '100kb' }));
 app.use('/api', rejectOperatorKeys);
+// Read the Clerk session token (each route then decides if sign-in is required)
+app.use('/api', readClerkSession);
 
-// (API routes are added here in later phases)
+// --- API routes ---
+app.use('/api/me', meRoutes);
 
 // Any /api address that doesn't exist
 app.use('/api', apiNotFound);

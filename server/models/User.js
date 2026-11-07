@@ -3,8 +3,9 @@ const mongoose = require('mongoose');
 
 // 🔒 SECURITY 7.2.3 / 7.3.4 — Unknown fields are an error, not stored or ignored (OWASP A03)
 const userSchema = new mongoose.Schema({
-  // The user's ID in Clerk, used to match a signed-in person to this document
-  clerkId: { type: String, required: true, unique: true, trim: true, maxlength: 100 },
+  // The user's ID in Clerk. Empty until the invited person signs up for the first time;
+  // then the server fills it in (middleware/auth.js). "sparse" lets many invited users have none yet.
+  clerkId: { type: String, unique: true, sparse: true, trim: true, maxlength: 100 },
   name: { type: String, required: true, trim: true, maxlength: 100 },
   email: { type: String, required: true, unique: true, trim: true, lowercase: true, maxlength: 254 },
   // 🔒 SECURITY 7.2.2 — Only these three roles can exist (OWASP A01)
