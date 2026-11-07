@@ -34,7 +34,7 @@ Fill in **Where** as each measure is built.
 | 7.3.5 | Only data needed for teaching is stored | Size of any breach | A02 Data Protection | code | |
 | 7.3.6 | Weekly database backup | Data loss | Recovery | process | |
 | **7.4 Network and hosting** | | | | | |
-| 7.4.1 | All traffic through the Cloudflare WAF; Always Use HTTPS | DDoS, bots, web attacks | — | config | Cloudflare proxy + free managed WAF rules (SETUP_GUIDE 7.6, 7.7); secret header from Cloudflare required: `server/middleware/security.js:104` (SETUP_GUIDE 7.8); `onrender.com` address disabled (SETUP_GUIDE 7.11) |
+| 7.4.1 | All traffic through the Cloudflare WAF; Always Use HTTPS | DDoS, bots, web attacks | — | config | Cloudflare proxy + free managed WAF rules (SETUP_GUIDE 7.6, 7.7); secret header from Cloudflare required: `server/middleware/security.js:107` (SETUP_GUIDE 7.8); `onrender.com` address disabled (SETUP_GUIDE 7.11) |
 | 7.4.2 | Database accepts connections only from Render (see 7.3.1) | Direct DB attacks | — | config | Same as 7.3.1 (SETUP_GUIDE 6.4) |
 | 7.4.3 | Render manages OS updates, server firewall, physical security (shared responsibility) | Unpatched or exposed servers | — | config | Render web service, no server of our own to patch (SETUP_GUIDE 6.8) |
 | 7.4.4 | 2FA on the GitHub, Render, Atlas, Clerk and Cloudflare accounts | Takeover of control accounts | — | process | Checklist for GitHub, Render, Atlas, Clerk, Cloudflare, UptimeRobot (SETUP_GUIDE 8.3) |

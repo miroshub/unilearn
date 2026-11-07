@@ -90,8 +90,11 @@ function rejectOperatorKeys(req, res, next) {
   next();
 }
 
-// The secret Cloudflare adds to every request, plus the previous one while it is being changed (D25)
-const originSecrets = [process.env.ORIGIN_SECRET, process.env.ORIGIN_SECRET_OLD].filter(Boolean);
+// The secret Cloudflare adds to every request, plus the previous one while it is being changed (D25).
+// trim() drops spaces or line breaks that sneak in when the value is pasted into Render.
+const originSecrets = [process.env.ORIGIN_SECRET, process.env.ORIGIN_SECRET_OLD]
+  .filter(Boolean)
+  .map((secret) => secret.trim());
 
 // True if the two texts are equal. Both are hashed first so they have the same length,
 // then compared in constant time, so an attacker can't guess the secret one letter at a time.
@@ -112,7 +115,15 @@ function requireCloudflare(req, res, next) {
   const sent = req.get('X-Origin-Verify') || '';
   // With no secret configured, nothing matches, so every request is refused (fails closed)
   if (!originSecrets.some((secret) => isSameSecret(sent, secret))) {
-    logWarning('Blocked request that did not come through Cloudflare', { ip: req.ip, method: req.method, path: req.path });
+    // Never log the header itself. Only whether it was there and its length, which tells
+    // "came straight to Render" (no header) apart from "wrong secret" (header, but no match).
+    logWarning('Blocked request that did not come through Cloudflare', {
+      ip: req.ip,
+      method: req.method,
+      path: req.path,
+      hadHeader: sent !== '',
+      headerLength: sent.length,
+    });
     return res.status(403).type('text/plain').send('Forbidden');
   }
   next();
