@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth, UserButton, UserProfile, SignOutButton } from '@clerk/react';
+import { callApi } from './api.js';
+import AdminPage from './AdminPage.jsx';
 
 // Signed-in page: asks our server who the user is, then shows their role or why they are blocked
 function HomePage() {
@@ -9,19 +11,10 @@ function HomePage() {
 
   // Ask the server once when the page opens
   useEffect(() => {
-    // Call GET /api/me with the user's Clerk session token
-    async function loadMe() {
-      // 🔒 SECURITY 7.1.3 — The token comes fresh from Clerk for each call; we never store it (OWASP A07)
-      const token = await getToken();
-      const response = await fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } });
-      const body = await response.json();
-      if (response.ok) {
-        setMe(body);
-      } else {
-        setProblem(body);
-      }
-    }
-    loadMe().catch(() => setProblem({ error: 'Could not reach the server. Try again later.' }));
+    // Call GET /api/me (api.js adds the Clerk session token); a refusal keeps the server's message and code
+    callApi(getToken, '/api/me')
+      .then(setMe)
+      .catch((err) => setProblem({ error: err.message, code: err.code }));
   }, [getToken]);
 
   // Staff without two-step verification: explain and show Clerk's account page to turn it on
@@ -60,8 +53,10 @@ function HomePage() {
         <span className="fs-4 fw-bold">UniLearn</span>
         <UserButton />
       </div>
-      <h1>Hello, {me.role}</h1>
+      <h1 className="h3">Hello, {me.role}</h1>
       <p className="text-muted">Signed in as {me.name}</p>
+      {/* 🔒 SECURITY 7.1.5 — Admin screens shown only to admins, for clarity; the server checks the role on every call (OWASP A01) */}
+      {me.role === 'admin' && <AdminPage me={me} />}
     </div>
   );
 }
