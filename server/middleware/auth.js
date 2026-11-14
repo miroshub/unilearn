@@ -44,6 +44,11 @@ async function linkInvitedUser(clerkId) {
 async function requireSignIn(req, res, next) {
   const auth = getAuth(req);
   if (!auth.isAuthenticated) {
+    // Clerk's reason (e.g. "token-expired") goes to our log only, never to the user
+    logWarning('Clerk did not accept the session', {
+      reason: res.getHeader('x-clerk-auth-reason'),
+      message: res.getHeader('x-clerk-auth-message'),
+    });
     return refuse(req, res, 401, 'NOT_SIGNED_IN', 'Please sign in');
   }
 
@@ -72,4 +77,16 @@ async function requireSignIn(req, res, next) {
   next();
 }
 
-module.exports = { readClerkSession, requireSignIn };
+// 🔒 SECURITY 7.2.2 — Role check: only the listed roles may use this route (OWASP A01)
+// Runs after requireSignIn. The role comes from our database, never from the browser.
+// Example: router.get('/', requireSignIn, requireRole('admin'), listUsers)
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!allowedRoles.includes(req.user.role)) {
+      return refuse(req, res, 403, 'WRONG_ROLE', 'You are not allowed to do this.');
+    }
+    next();
+  };
+}
+
+module.exports = { readClerkSession, requireSignIn, requireRole };
