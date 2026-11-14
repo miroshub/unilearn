@@ -12,15 +12,15 @@ Fill in **Where** as each measure is built.
 | ID | Measure | Stops | OWASP | Kind | Where |
 |---|---|---|---|---|---|
 | **7.1 Front end** | | | | | |
-| 7.1.1 | User text shown only through React's normal output; no raw HTML | XSS | A03 Output Encoding | code | `client/src/HomePage.jsx:56` (no `dangerouslySetInnerHTML` anywhere) |
+| 7.1.1 | User text shown only through React's normal output; no raw HTML | XSS | A03 Output Encoding | code | `client/src/HomePage.jsx:49`, `client/src/UsersAdmin.jsx:100` (no `dangerouslySetInnerHTML` anywhere) |
 | 7.1.2 | HTTPS on every page (Render + Cloudflare) | Eavesdropping, session theft | A02 Communication Security | config | Cloudflare Always Use HTTPS + SSL Full (strict) + minimum TLS 1.2 (SETUP_GUIDE 7.5); HSTS header from helmet `server/middleware/security.js:17` |
-| 7.1.3 | Sessions handled by Clerk; tokens never in localStorage | Session theft | A07 Session Management | code | Token checked: `server/middleware/auth.js:7`; token fetched per call, never stored: `client/src/HomePage.jsx:14`; 30 min / 8 h limits in Clerk (SETUP_GUIDE 5.8) |
+| 7.1.3 | Sessions handled by Clerk; tokens never in localStorage | Session theft | A07 Session Management | code | Token checked: `server/middleware/auth.js:7`; token fetched per call, never stored: `client/src/api.js:5`; 30 min / 8 h limits in Clerk (SETUP_GUIDE 5.8) |
 | 7.1.4 | No secret keys in front-end code (only the publishable key) | Leaked keys | A05 System Configuration | code | `client/src/main.jsx:8`; secret key only in `server/.env` |
-| 7.1.5 | Buttons hidden by role for clarity only; the server still checks | Users trying hidden features | A01 Access Control | code | |
+| 7.1.5 | Buttons hidden by role for clarity only; the server still checks | Users trying hidden features | A01 Access Control | code | Admin screens only for admins: `client/src/HomePage.jsx:58`; no controls on your own row: `client/src/UsersAdmin.jsx:106` (server refuses both anyway) |
 | **7.2 Back end** | | | | | |
 | 7.2.1 | Sign-in check on every route | Anonymous access | A07 Authentication | code | `server/middleware/auth.js:42` (`requireSignIn`) |
-| 7.2.2 | Role + ownership check on every route | Changing grades, seeing others' data | A01 Access Control | code | |
-| 7.2.3 | Request data checked against a schema; unknown fields rejected | Malicious input, self-assigned roles | A03 Input Validation | code | `server/models/*.js:4` (`strict: 'throw'` on all 8 schemas); per-route checks added with each route |
+| 7.2.2 | Role + ownership check on every route | Changing grades, seeing others' data | A01 Access Control | code | `requireRole`: `server/middleware/auth.js:80`; admin-only routes: `server/routes/users.js:12`, `server/routes/auditLogs.js:8`; roles limited to 3: `server/models/User.js:11`; ownership checks added from Phase 5 |
+| 7.2.3 | Request data checked against a schema; unknown fields rejected | Malicious input, self-assigned roles | A03 Input Validation | code | `server/models/*.js:4` (`strict: 'throw'` on all 8 schemas); only expected body fields: `server/middleware/validate.js:4` (`allowFields`, used on every route that takes a body) |
 | 7.2.4 | Limit on requests per minute | Flooding, password guessing | A04, A07 | code | `server/middleware/security.js:35`; counts the real visitor IP behind Cloudflare: `server/app.js:21` (`trust proxy`, proven in SETUP_GUIDE 7.10) |
 | 7.2.5 | Security headers; API accepts calls only from the UniLearn website | Clickjacking, cross-site calls | A05 System Configuration | code | Headers: `server/middleware/security.js:17`; origin check: `server/middleware/security.js:54` |
 | 7.2.6 | Uploads: PDF only, max 10 MB | Harmful files | A04 File Management | code | |
@@ -41,14 +41,14 @@ Fill in **Where** as each measure is built.
 | 7.4.5 | Dependabot + `npm audit` on every push | Vulnerable packages | A06 | config | `.github/workflows/security-audit.yml`, `.github/dependabot.yml` |
 | 7.4.6 | Render deploys only from `main` | Unfinished code going live | — | config | Render: branch `main`, Auto-Deploy only after GitHub checks pass (SETUP_GUIDE 6.6) |
 | **7.5 Users** | | | | | |
-| 7.5.1 | MFA required for admins and instructors | Phishing / account takeover | A07 | code + config | `server/middleware/auth.js:65`; TOTP + backup codes in Clerk (SETUP_GUIDE 5.6) |
+| 7.5.1 | MFA required for admins and instructors | Phishing / account takeover | A07 | code + config | `server/middleware/auth.js:70`; TOTP + backup codes in Clerk (SETUP_GUIDE 5.6) |
 | 7.5.2 | Minimum password length; breached passwords rejected | Weak or reused passwords | A07 | config | Clerk: minimum length 12, compromised passwords rejected (SETUP_GUIDE 5.5) |
 | 7.5.3 | Automatic blocking after repeated failed sign-ins | Password guessing | A07 | config | Clerk Protect: lockout after 5 attempts for 15 min (SETUP_GUIDE 5.7) |
-| 7.5.4 | No public sign-up; admins invite by university email | Fake accounts | A07 | code + config | Clerk Access mode = Invite-only (SETUP_GUIDE 5.4); `server/scripts/addUser.js:22`; no-account refusal `server/middleware/auth.js:55` |
-| 7.5.5 | Accounts disabled when people leave | Former users keeping access | A01 | code | `server/middleware/auth.js:60`; `status` field `server/models/User.js:15` |
+| 7.5.4 | No public sign-up; admins invite by university email | Fake accounts | A07 | code + config | Clerk Access mode = Invite-only (SETUP_GUIDE 5.4); `server/scripts/addUser.js:22`; admin invites + email-domain check (D23): `server/routes/users.js:71`, `server/routes/users.js:90`; no-account refusal `server/middleware/auth.js:60` |
+| 7.5.5 | Accounts disabled when people leave | Former users keeping access | A01 | code | `server/middleware/auth.js:65`; `status` field `server/models/User.js:15`; admin disables + Clerk ban: `server/routes/users.js:141` |
 | 7.5.6 | One-page security tips guide for users | Phishing, sharing codes | — | process | |
 | **7.6 Logging** | | | | | |
-| 7.6.1 | Audit log: grade changes (old + new), role changes, account creation/removal | Untraceable changes (repudiation) | A09 | code | Collection: `server/models/AuditLog.js:1` (entries written from Phase 4) |
+| 7.6.1 | Audit log: grade changes (old + new), role changes, account creation/removal | Untraceable changes (repudiation) | A09 | code | Collection: `server/models/AuditLog.js:1`; writer: `server/audit.js:4`; account creation, role, disable/enable: `server/routes/users.js:120` (and the `writeAuditLog` calls around it); read-only page: `server/routes/auditLogs.js:8`; grade changes from Phase 8 |
 | 7.6.2 | Application log: denied access, errors, blocked requests (Render logs) | Unnoticed attacks | A09 | code | `server/logger.js:38`; called from `server/middleware/security.js` and `errors.js` |
 | 7.6.3 | Sign-in log: sign-ins, failures, MFA events (Clerk dashboard) | Unnoticed account attacks | A09 | config | Clerk dashboard → Logs, and Users → a user → sessions |
 | 7.6.4 | Attack log: blocked requests, bot traffic (Cloudflare) | Unnoticed attacks | A09 | config | Cloudflare → Security → Events (SETUP_GUIDE 8.2) |
