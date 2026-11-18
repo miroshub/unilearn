@@ -15,6 +15,8 @@ const meRoutes = require('./routes/me');
 const userRoutes = require('./routes/users');
 const auditLogRoutes = require('./routes/auditLogs');
 const courseRoutes = require('./routes/courses');
+const assignmentRoutes = require('./routes/assignments');
+const materialRoutes = require('./routes/materials');
 
 const app = express();
 
@@ -57,6 +59,9 @@ app.use('/api', readClerkSession);
 app.use('/api/me', meRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
+// The two course sub-addresses come before /api/courses, so a request is handled by one router only
+app.use('/api/courses/:courseId/assignments', assignmentRoutes);
+app.use('/api/courses/:courseId/materials', materialRoutes);
 app.use('/api/courses', courseRoutes);
 
 // Any /api address that doesn't exist
