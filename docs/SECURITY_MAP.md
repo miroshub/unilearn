@@ -12,14 +12,14 @@ Fill in **Where** as each measure is built.
 | ID | Measure | Stops | OWASP | Kind | Where |
 |---|---|---|---|---|---|
 | **7.1 Front end** | | | | | |
-| 7.1.1 | User text shown only through React's normal output; no raw HTML | XSS | A03 Output Encoding | code | `client/src/HomePage.jsx:49`, `client/src/UsersAdmin.jsx:100` (no `dangerouslySetInnerHTML` anywhere) |
+| 7.1.1 | User text shown only through React's normal output; no raw HTML | XSS | A03 Output Encoding | code | `client/src/HomePage.jsx:50`, `client/src/UsersAdmin.jsx:100`, `client/src/CoursesAdmin.jsx:117`, `client/src/MyCourses.jsx:76` (no `dangerouslySetInnerHTML` anywhere) |
 | 7.1.2 | HTTPS on every page (Render + Cloudflare) | Eavesdropping, session theft | A02 Communication Security | config | Cloudflare Always Use HTTPS + SSL Full (strict) + minimum TLS 1.2 (SETUP_GUIDE 7.5); HSTS header from helmet `server/middleware/security.js:17` |
 | 7.1.3 | Sessions handled by Clerk; tokens never in localStorage | Session theft | A07 Session Management | code | Token checked: `server/middleware/auth.js:7`; token fetched per call, never stored: `client/src/api.js:5`; 30 min / 8 h limits in Clerk (SETUP_GUIDE 5.8) |
 | 7.1.4 | No secret keys in front-end code (only the publishable key) | Leaked keys | A05 System Configuration | code | `client/src/main.jsx:8`; secret key only in `server/.env` |
-| 7.1.5 | Buttons hidden by role for clarity only; the server still checks | Users trying hidden features | A01 Access Control | code | Admin screens only for admins: `client/src/HomePage.jsx:58`; no controls on your own row: `client/src/UsersAdmin.jsx:106` (server refuses both anyway) |
+| 7.1.5 | Buttons hidden by role for clarity only; the server still checks | Users trying hidden features | A01 Access Control | code | One dashboard per role: `client/src/HomePage.jsx:59`; no controls on your own row: `client/src/UsersAdmin.jsx:106`; class list for instructors only: `client/src/MyCourses.jsx:43` (server refuses or withholds all of these anyway) |
 | **7.2 Back end** | | | | | |
-| 7.2.1 | Sign-in check on every route | Anonymous access | A07 Authentication | code | `server/middleware/auth.js:42` (`requireSignIn`) |
-| 7.2.2 | Role + ownership check on every route | Changing grades, seeing others' data | A01 Access Control | code | `requireRole`: `server/middleware/auth.js:80`; admin-only routes: `server/routes/users.js:12`, `server/routes/auditLogs.js:8`; roles limited to 3: `server/models/User.js:11`; ownership checks added from Phase 5 |
+| 7.2.1 | Sign-in check on every route | Anonymous access | A07 Authentication | code | `server/middleware/auth.js:42` (`requireSignIn`); course routes: `server/routes/courses.js:14` |
+| 7.2.2 | Role + ownership check on every route | Changing grades, seeing others' data | A01 Access Control | code | `requireRole`: `server/middleware/auth.js:80`; admin-only routes: `server/routes/users.js:12`, `server/routes/auditLogs.js:8`, `server/routes/courses.js:104`; roles limited to 3: `server/models/User.js:11`; ownership: `canSeeCourse` `server/access.js:14`, used in `server/routes/courses.js:97`; own courses only in lists: `server/routes/courses.js:28` |
 | 7.2.3 | Request data checked against a schema; unknown fields rejected | Malicious input, self-assigned roles | A03 Input Validation | code | `server/models/*.js:4` (`strict: 'throw'` on all 8 schemas); only expected body fields: `server/middleware/validate.js:4` (`allowFields`, used on every route that takes a body) |
 | 7.2.4 | Limit on requests per minute | Flooding, password guessing | A04, A07 | code | `server/middleware/security.js:35`; counts the real visitor IP behind Cloudflare: `server/app.js:21` (`trust proxy`, proven in SETUP_GUIDE 7.10) |
 | 7.2.5 | Security headers; API accepts calls only from the UniLearn website | Clickjacking, cross-site calls | A05 System Configuration | code | Headers: `server/middleware/security.js:17`; origin check: `server/middleware/security.js:54` |
@@ -31,7 +31,7 @@ Fill in **Where** as each measure is built.
 | 7.3.2 | App DB user: readWrite on the UniLearn DB only, long generated password | Full takeover if the password leaks | A01, A07 | config | Atlas DB user (SETUP_GUIDE 4.3); `dbName` in `server/db.js:17` |
 | 7.3.3 | Encryption in transit (TLS) and at rest (Atlas default) | Data read in transit or from disk | A02 Data Protection | config | `tls: true` in `server/db.js:19`; at rest = Atlas default (SETUP_GUIDE 4.6) |
 | 7.3.4 | Query filters cleaned; data shapes fixed by Mongoose schemas | NoSQL injection | A03 Database Security | code | `$` keys refused: `server/middleware/security.js:82`; `strictQuery: 'throw'`: `server/models/*.js:4` |
-| 7.3.5 | Only data needed for teaching is stored | Size of any breach | A02 Data Protection | code | |
+| 7.3.5 | Only data needed for teaching is stored | Size of any breach | A02 Data Protection | code | Students don't receive the class list: `server/routes/courses.js:64` (rest in Phase 9) |
 | 7.3.6 | Weekly database backup | Data loss | Recovery | process | |
 | **7.4 Network and hosting** | | | | | |
 | 7.4.1 | All traffic through the Cloudflare WAF; Always Use HTTPS | DDoS, bots, web attacks | — | config | Cloudflare proxy + free managed WAF rules (SETUP_GUIDE 7.6, 7.7); secret header from Cloudflare required: `server/middleware/security.js:107` (SETUP_GUIDE 7.8); `onrender.com` address disabled (SETUP_GUIDE 7.11) |
