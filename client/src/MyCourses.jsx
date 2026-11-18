@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/react';
 import { callApi } from './api.js';
+import AssignmentsSection from './AssignmentsSection.jsx';
+import MaterialsSection from './MaterialsSection.jsx';
 
 // Instructor and student dashboard: "My courses". The server only sends this user's own courses.
 function MyCourses({ me }) {
@@ -60,6 +62,8 @@ function MyCourses({ me }) {
             </table>
           </>
         )}
+        <AssignmentsSection course={selected} me={me} />
+        <MaterialsSection course={selected} me={me} />
       </div>
     );
   }

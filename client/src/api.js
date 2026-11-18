@@ -1,24 +1,49 @@
 // One helper for every call to our API, so each call sends the token the same way.
 
+// Turn a refused answer into an Error with the server's message (and its code, e.g. "MFA_REQUIRED")
+async function toError(response) {
+  const answer = await response.json().catch(() => ({}));
+  const error = new Error(answer.error || 'Something went wrong');
+  error.code = answer.code;
+  return error;
+}
+
 // Call our API with the user's Clerk token. Returns the JSON answer, or throws an Error with the server's message.
+// "body" can be a plain object (sent as JSON) or a FormData (a form with a file, sent as an upload).
 export async function callApi(getToken, path, method = 'GET', body = undefined) {
   // 🔒 SECURITY 7.1.3 — The token comes fresh from Clerk for each call; we never store it (OWASP A07)
   const token = await getToken();
   const headers = { Authorization: `Bearer ${token}` };
-  if (body !== undefined) {
+  const isForm = body instanceof FormData;
+  // For a FormData the browser sets the Content-Type itself (it includes the form's boundary)
+  if (body !== undefined && !isForm) {
     headers['Content-Type'] = 'application/json';
   }
 
   const response = await fetch(path, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: body === undefined || isForm ? body : JSON.stringify(body),
   });
-  const answer = await response.json();
   if (!response.ok) {
-    const error = new Error(answer.error || 'Something went wrong');
-    error.code = answer.code;
-    throw error;
+    throw await toError(response);
   }
-  return answer;
+  return response.json();
+}
+
+// Download a file from our API (with the token) and save it under the given name
+export async function downloadFile(getToken, path, fileName) {
+  const token = await getToken();
+  const response = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) {
+    throw await toError(response);
+  }
+  // Put the bytes in a temporary in-browser link and "click" it, so the browser saves the file
+  const fileUrl = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = fileUrl;
+  link.download = fileName;
+  link.click();
+  // Free the memory a moment later, once the download has started
+  setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
 }
