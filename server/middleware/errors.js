@@ -23,6 +23,10 @@ function getStatusCode(err) {
   if (['ValidationError', 'StrictModeError', 'CastError'].includes(err.name)) {
     return 400;
   }
+  // Multer (file uploads): file over 10 MB = 413, any other upload problem (e.g. two files) = 400
+  if (err.name === 'MulterError') {
+    return err.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+  }
   // MongoDB: a unique index refused a duplicate (e.g. the same course code, or enrolling a student twice)
   if (err.code === 11000) {
     return 409;
