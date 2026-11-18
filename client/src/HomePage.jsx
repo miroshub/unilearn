@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth, UserButton, UserProfile, SignOutButton } from '@clerk/react';
 import { callApi } from './api.js';
 import AdminPage from './AdminPage.jsx';
+import MyCourses from './MyCourses.jsx';
 
 // Signed-in page: asks our server who the user is, then shows their role or why they are blocked
 function HomePage() {
@@ -55,8 +56,8 @@ function HomePage() {
       </div>
       <h1 className="h3">Hello, {me.role}</h1>
       <p className="text-muted">Signed in as {me.name}</p>
-      {/* 🔒 SECURITY 7.1.5 — Admin screens shown only to admins, for clarity; the server checks the role on every call (OWASP A01) */}
-      {me.role === 'admin' && <AdminPage me={me} />}
+      {/* 🔒 SECURITY 7.1.5 — Each role sees its own dashboard, for clarity; the server checks the role on every call (OWASP A01) */}
+      {me.role === 'admin' ? <AdminPage me={me} /> : <MyCourses me={me} />}
     </div>
   );
 }
