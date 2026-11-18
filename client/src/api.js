@@ -1,5 +1,8 @@
 // One helper for every call to our API, so each call sends the token the same way.
 
+// Largest PDF the server accepts (checked in the browser for clarity only; the server checks itself, 7.2.6)
+export const MAX_PDF_BYTES = 10 * 1024 * 1024;
+
 // Turn a refused answer into an Error with the server's message (and its code, e.g. "MFA_REQUIRED")
 async function toError(response) {
   const answer = await response.json().catch(() => ({}));

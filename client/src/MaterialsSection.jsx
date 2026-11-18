@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/react';
-import { callApi, downloadFile } from './api.js';
-
-const MAX_PDF_BYTES = 10 * 1024 * 1024;
+import { callApi, downloadFile, MAX_PDF_BYTES } from './api.js';
 
 // One course's material PDFs: everyone on the course can download; the instructor can upload.
 function MaterialsSection({ course, me }) {

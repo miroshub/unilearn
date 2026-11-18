@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/react';
 import { callApi } from './api.js';
+import { MyWork, SubmissionsList } from './Submissions.jsx';
 
 // One course's assignments and exams. Instructors also get a form to add one.
 function AssignmentsSection({ course, me }) {
   const { getToken } = useAuth();
   const [assignments, setAssignments] = useState([]);
   const [message, setMessage] = useState(null);
+  // Instructor: the assignment whose submissions are opened below its row
+  const [openId, setOpenId] = useState(null);
   const address = `/api/courses/${course.id}/assignments`;
 
   // Load the course's assignments from the server
@@ -72,17 +75,32 @@ function AssignmentsSection({ course, me }) {
       {assignments.length === 0 ? <p className="text-muted small">Nothing yet.</p> : (
         <table className="table table-sm">
           <thead>
-            <tr><th>Title</th><th>Type</th><th>Due</th><th>Max score</th></tr>
+            <tr><th>Title</th><th>Type</th><th>Due</th><th>Max score</th><th>{me.role === 'student' ? 'My work' : ''}</th></tr>
           </thead>
           <tbody>
             {/* 🔒 SECURITY 7.1.1 — Titles shown as plain text by React, never as HTML (OWASP A03) */}
             {assignments.map((assignment) => (
-              <tr key={assignment.id}>
-                <td>{assignment.title}</td>
-                <td><span className={`badge ${assignment.type === 'exam' ? 'bg-warning text-dark' : 'bg-info text-dark'}`}>{assignment.type}</span></td>
-                <td>{new Date(assignment.dueAt).toLocaleString()}</td>
-                <td>{assignment.maxScore}</td>
-              </tr>
+              <Fragment key={assignment.id}>
+                <tr>
+                  <td>{assignment.title}</td>
+                  <td><span className={`badge ${assignment.type === 'exam' ? 'bg-warning text-dark' : 'bg-info text-dark'}`}>{assignment.type}</span></td>
+                  <td>{new Date(assignment.dueAt).toLocaleString()}</td>
+                  <td>{assignment.maxScore}</td>
+                  <td>
+                    {me.role === 'student' && <MyWork courseId={course.id} assignment={assignment} onChange={loadAssignments} />}
+                    {me.role === 'instructor' && assignment.type === 'assignment' && (
+                      <button className="btn btn-sm btn-outline-secondary" onClick={() => setOpenId(openId === assignment.id ? null : assignment.id)}>
+                        {openId === assignment.id ? 'Hide submissions' : 'Submissions'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+                {openId === assignment.id && (
+                  <tr>
+                    <td colSpan={5}><SubmissionsList courseId={course.id} assignment={assignment} /></td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
           </tbody>
         </table>
