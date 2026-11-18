@@ -1,6 +1,6 @@
 // Assignments and exams of one course (/api/courses/:courseId/assignments). Instructors add them to their own courses.
 const express = require('express');
-const { Assignment } = require('../models');
+const { Assignment, Submission, Grade } = require('../models');
 const { requireSignIn, requireRole } = require('../middleware/auth');
 const { allowFields } = require('../middleware/validate');
 const { requireOwnCourse } = require('../access');
@@ -25,8 +25,24 @@ function toPublicAssignment(assignment) {
 // Admins may read them too (they need them for the read-only grade view, Phase 8).
 router.get('/', requireSignIn, requireRole('admin', 'instructor', 'student'), requireOwnCourse, async (req, res) => {
   const assignments = await Assignment.find({ courseId: req.course._id }).sort({ dueAt: 1 });
-  res.json(assignments.map(toPublicAssignment));
+  const list = assignments.map(toPublicAssignment);
+  if (req.user.role === 'student') {
+    await addMyWork(req.user, list);
+  }
+  res.json(list);
 });
+
+// For a student: add THEIR OWN submission (ID + time) to each assignment, and whether it is graded (= locked, D21)
+async function addMyWork(student, list) {
+  const assignmentIds = list.map((item) => item.id);
+  const submissions = await Submission.find({ studentId: student._id, assignmentId: { $in: assignmentIds } });
+  const grades = await Grade.find({ studentId: student._id, assignmentId: { $in: assignmentIds } });
+  for (const item of list) {
+    const mine = submissions.find((submission) => submission.assignmentId.equals(item.id));
+    item.mySubmission = mine ? { id: mine.id, submittedAt: mine.submittedAt } : null;
+    item.graded = grades.some((grade) => grade.assignmentId.equals(item.id));
+  }
+}
 
 // POST: add an assignment or exam to the course.
 // 🔒 SECURITY 7.2.2 — Signed in → instructor → instructor of THIS course (OWASP A01, proposal §4)
