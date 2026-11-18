@@ -89,4 +89,4 @@ function requireRole(...allowedRoles) {
   };
 }
 
-module.exports = { readClerkSession, requireSignIn, requireRole };
+module.exports = { readClerkSession, requireSignIn, requireRole, refuse };

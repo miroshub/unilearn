@@ -14,6 +14,7 @@ const { readClerkSession } = require('./middleware/auth');
 const meRoutes = require('./routes/me');
 const userRoutes = require('./routes/users');
 const auditLogRoutes = require('./routes/auditLogs');
+const courseRoutes = require('./routes/courses');
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use('/api', readClerkSession);
 app.use('/api/me', meRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/courses', courseRoutes);
 
 // Any /api address that doesn't exist
 app.use('/api', apiNotFound);

@@ -7,6 +7,7 @@ const GENERIC_MESSAGES = {
   401: 'Please sign in',
   403: 'Forbidden',
   404: 'Not found',
+  409: 'This already exists',
   413: 'The request is too large',
 };
 
@@ -21,6 +22,10 @@ function getStatusCode(err) {
   // Mongoose: wrong data shape, unknown field, or a malformed ID
   if (['ValidationError', 'StrictModeError', 'CastError'].includes(err.name)) {
     return 400;
+  }
+  // MongoDB: a unique index refused a duplicate (e.g. the same course code, or enrolling a student twice)
+  if (err.code === 11000) {
+    return 409;
   }
   // Express: broken JSON (400) or a body that's too big (413)
   if (err.status >= 400 && err.status < 500) {
