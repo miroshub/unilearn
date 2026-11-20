@@ -5,6 +5,7 @@ const { requireSignIn, requireRole } = require('../middleware/auth');
 const { allowFields } = require('../middleware/validate');
 const { requireOwnCourse } = require('../access');
 const { receivePdf } = require('../upload');
+const { storePdf, readPdf } = require('../fileCrypto');
 const { logInfo } = require('../logger');
 
 // mergeParams: lets this router read :courseId from the address it is mounted on (app.js)
@@ -16,7 +17,7 @@ router.use(requireSignIn, requireRole('instructor', 'student'), requireOwnCourse
 
 // Only the fields the page needs (never the file itself)
 function toPublicMaterial(material) {
-  return { id: material.id, title: material.title, uploadedAt: material.uploadedAt };
+  return { id: material.id, title: material.title, uploadedAt: material.uploadedAt, fileSha256: material.fileSha256 };
 }
 
 // GET: the course's material, newest first (the "file" field isn't loaded, see models/Material.js)
@@ -28,12 +29,10 @@ router.get('/', async (req, res) => {
 // POST: upload a PDF (a form with "title" and "file").
 // 🔒 SECURITY 7.2.2 — Only the course's own instructor; the role and course checks run BEFORE the file is read (OWASP A01)
 router.post('/', requireRole('instructor'), receivePdf, allowFields('title'), async (req, res) => {
-  const material = await Material.create({
-    courseId: req.course._id,
-    title: req.body.title,
-    file: req.file.buffer,
-    uploadedBy: req.user._id,
-  });
+  const material = new Material({ courseId: req.course._id, title: req.body.title, uploadedBy: req.user._id });
+  // Encrypt the PDF and save its SHA-256 fingerprint (D38, fileCrypto.js)
+  storePdf(material, req.file.buffer);
+  await material.save();
   logInfo('Material uploaded', { actorId: req.user.id, courseId: req.course.id, materialId: material.id, bytes: req.file.size });
   res.status(201).json(toPublicMaterial(material));
 });
@@ -46,10 +45,13 @@ router.get('/:materialId/file', async (req, res) => {
   if (!material) {
     return res.status(404).json({ error: 'Not found' });
   }
+  // Decrypt first, and refuse if the stored file was changed since upload (fileCrypto.js).
+  // This comes before the download headers, so a refusal is sent as a normal error, not as a "PDF".
+  const pdf = readPdf(material);
   // 🔒 SECURITY 7.2.6 — Sent as a download, never shown inside our page, and never cached by Cloudflare or the browser (OWASP A04)
   res.attachment(`${material.title}.pdf`);
   res.set('Cache-Control', 'private, no-store');
-  res.send(material.file);
+  res.send(pdf);
 });
 
 module.exports = router;

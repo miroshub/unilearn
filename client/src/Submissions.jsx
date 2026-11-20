@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/react';
-import { callApi, downloadFile, MAX_PDF_BYTES } from './api.js';
+import { callApi, downloadFile, sha256Of, MAX_PDF_BYTES } from './api.js';
+import Fingerprint from './Fingerprint.jsx';
 
-// Student: their own work for one assignment — status, upload/replace before the deadline, download
+// Student: their own work for one assignment — status, upload/replace before the deadline, download, score
 export function MyWork({ courseId, assignment, onChange }) {
   const { getToken } = useAuth();
   const [problem, setProblem] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Result of comparing the file's fingerprint in the browser with the server's receipt
+  const [receiptCheck, setReceiptCheck] = useState(null);
   const address = `/api/courses/${courseId}/assignments/${assignment.id}/submissions`;
   const mine = assignment.mySubmission;
   // For clarity only: the server checks the deadline with its own clock (D21)
@@ -26,9 +29,13 @@ export function MyWork({ courseId, assignment, onChange }) {
     const formData = new FormData();
     formData.append('file', file);
     setProblem(null);
+    setReceiptCheck(null);
     setBusy(true);
     try {
-      await callApi(getToken, `${address}/mine`, 'PUT', formData);
+      const localSha256 = await sha256Of(file);
+      const receipt = await callApi(getToken, `${address}/mine`, 'PUT', formData);
+      // 🔒 SECURITY 7.2.9 — The server's SHA-256 must equal the one this browser worked out (OWASP A08)
+      setReceiptCheck(receipt.fileSha256 === localSha256 ? 'match' : 'mismatch');
       await onChange();
     } catch (err) {
       setProblem(err.message);
@@ -41,16 +48,25 @@ export function MyWork({ courseId, assignment, onChange }) {
     downloadFile(getToken, `${address}/${mine.id}/file`, `${assignment.title}.pdf`).catch((err) => setProblem(err.message));
   }
 
+  // The student's own score (the server only ever sends their own, 7.2.2)
+  const myScore = assignment.myScore !== null && assignment.myScore !== undefined && (
+    <strong className="d-block">Score: {assignment.myScore} / {assignment.maxScore}</strong>
+  );
+
   if (assignment.type === 'exam') {
-    return <small className="text-muted">No upload (score entered by instructor)</small>;
+    return myScore || <small className="text-muted">No upload (score entered by instructor)</small>;
   }
 
   return (
     <div>
+      {myScore}
       {mine
         ? <small className="text-success d-block">Submitted {new Date(mine.submittedAt).toLocaleString()}</small>
         : <small className="text-muted d-block">Not submitted</small>}
       {mine && <button className="btn btn-sm btn-link px-0" onClick={download}>Download my PDF</button>}
+      {mine && <Fingerprint sha256={mine.fileSha256} />}
+      {receiptCheck === 'match' && <small className="text-success d-block">✔ The server received exactly your file (SHA-256 matches).</small>}
+      {receiptCheck === 'mismatch' && <small className="text-danger d-block">The server's fingerprint differs from your file. Upload it again.</small>}
       {/* 🔒 SECURITY 7.1.5 — Upload hidden once graded or past the deadline, for clarity; the server refuses anyway (OWASP A01) */}
       {assignment.graded && <small className="d-block">Graded — locked</small>}
       {!assignment.graded && isClosed && <small className="d-block">Deadline passed</small>}

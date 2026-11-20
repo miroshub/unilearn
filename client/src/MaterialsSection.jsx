@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/react';
 import { callApi, downloadFile, MAX_PDF_BYTES } from './api.js';
+import Fingerprint from './Fingerprint.jsx';
 
 // One course's material PDFs: everyone on the course can download; the instructor can upload.
 function MaterialsSection({ course, me }) {
@@ -78,6 +79,7 @@ function MaterialsSection({ course, me }) {
               <span>
                 {material.title}
                 <small className="text-muted ms-2">{new Date(material.uploadedAt).toLocaleDateString()}</small>
+                <Fingerprint sha256={material.fileSha256} />
               </span>
               <button className="btn btn-sm btn-outline-primary" onClick={() => download(material)}>Download</button>
             </li>

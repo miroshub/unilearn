@@ -1,5 +1,5 @@
 // Ownership checks: does this course belong to this user? Shared by every course-related route.
-const { Course, Enrollment } = require('./models');
+const { Course, Enrollment, Assignment } = require('./models');
 const { refuse } = require('./middleware/auth');
 
 // True if the user is one of the course's instructors
@@ -40,4 +40,16 @@ async function requireOwnCourse(req, res, next) {
   next();
 }
 
-module.exports = { isCourseInstructor, isEnrolled, canSeeCourse, requireOwnCourse };
+// 🔒 SECURITY 7.2.2 — Middleware: the assignment in the address must belong to the course checked above (OWASP A01)
+// Runs after requireOwnCourse. Without "courseId" in the search, someone could put their own course
+// in the address and another course's assignment ID after it. Afterwards, req.assignment is the assignment.
+async function requireCourseAssignment(req, res, next) {
+  const assignment = await Assignment.findOne({ _id: req.params.assignmentId, courseId: req.course._id });
+  if (!assignment) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  req.assignment = assignment;
+  next();
+}
+
+module.exports = { isCourseInstructor, isEnrolled, canSeeCourse, requireOwnCourse, requireCourseAssignment };

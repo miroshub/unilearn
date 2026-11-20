@@ -5,8 +5,11 @@ const mongoose = require('mongoose');
 const submissionSchema = new mongoose.Schema({
   assignmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Assignment', required: true },
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  // The PDF itself. "select: false" means lists never load the file; only a download asks for it.
+  // The PDF, encrypted with AES-256-GCM (D38, see fileCrypto.js).
+  // "select: false" means lists never load the file; only a download asks for it.
   file: { type: Buffer, required: true, select: false },
+  // SHA-256 fingerprint of the original PDF (64 hex characters), shown to the student as a receipt
+  fileSha256: { type: String, required: true, match: /^[0-9a-f]{64}$/ },
   submittedAt: { type: Date, default: Date.now },
 }, { strict: 'throw', strictQuery: 'throw' });
 

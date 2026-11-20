@@ -34,6 +34,13 @@ export async function callApi(getToken, path, method = 'GET', body = undefined) 
   return response.json();
 }
 
+// SHA-256 fingerprint of a file chosen in the browser, as 64 hex characters (the browser's built-in Web Crypto).
+// Compared with the server's receipt after an upload, it proves the server stored exactly this file.
+export async function sha256Of(file) {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 // Download a file from our API (with the token) and save it under the given name
 export async function downloadFile(getToken, path, fileName) {
   const token = await getToken();
