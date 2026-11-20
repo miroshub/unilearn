@@ -10,6 +10,8 @@ function UsersAdmin({ me }) {
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [message, setMessage] = useState(null);
+  // The user whose name and email are being corrected right now: { id, name, email }, or null
+  const [editing, setEditing] = useState(null);
 
   // Load the user list from the server
   const loadUsers = useCallback(async () => {
@@ -62,6 +64,26 @@ function UsersAdmin({ me }) {
     setForm({ ...form, [event.target.name]: event.target.value });
   }
 
+  // GDPR correction: send the edited name and email, then close the edit row
+  async function saveCorrection(event) {
+    event.preventDefault();
+    const worked = await runAction(
+      () => callApi(getToken, `/api/users/${editing.id}/details`, 'PATCH', { name: editing.name, email: editing.email }),
+      `Details of ${editing.name} corrected.`);
+    if (worked) {
+      setEditing(null);
+    }
+  }
+
+  // GDPR erasure: anonymise a disabled account, after a clear warning (it cannot be undone)
+  function anonymise(user) {
+    const sure = window.confirm(`Anonymise ${user.name}?\n\nTheir name, email, sign-in account and PDFs are removed for good. `
+      + 'Grades are kept under an anonymous ID. This cannot be undone.');
+    if (sure) {
+      runAction(() => callApi(getToken, `/api/users/${user.id}/anonymise`, 'POST'), 'Account anonymised.');
+    }
+  }
+
   return (
     <div>
       {message && <div className={`alert alert-${message.type}`}>{message.text}</div>}
@@ -98,13 +120,30 @@ function UsersAdmin({ me }) {
         </thead>
         <tbody>
           {/* 🔒 SECURITY 7.1.1 — Names and emails shown as plain text by React, never as HTML (OWASP A03) */}
-          {users.map((user) => (
+          {users.map((user) => editing?.id === user.id ? (
+            <tr key={user.id}>
+              <td>
+                <input className="form-control form-control-sm" value={editing.name} required maxLength={100}
+                  onChange={(event) => setEditing({ ...editing, name: event.target.value })} form="correct-form" />
+              </td>
+              <td>
+                <input className="form-control form-control-sm" type="email" value={editing.email} required maxLength={254}
+                  onChange={(event) => setEditing({ ...editing, email: event.target.value })} form="correct-form" />
+              </td>
+              <td colSpan="4">
+                <form id="correct-form" onSubmit={saveCorrection} className="d-inline">
+                  <button className="btn btn-sm btn-primary me-1" type="submit">Save</button>
+                </form>
+                <button className="btn btn-sm btn-outline-secondary" onClick={() => setEditing(null)}>Cancel</button>
+              </td>
+            </tr>
+          ) : (
             <tr key={user.id} className={user.status === 'disabled' ? 'text-muted' : ''}>
               <td>{user.name}{user.studentNumber && <small className="text-muted"> ({user.studentNumber})</small>}</td>
               <td>{user.email}</td>
               <td>
-                {/* 🔒 SECURITY 7.1.5 — Own row has no controls, for clarity only; the server refuses self-changes too (OWASP A01) */}
-                {user.id === me.id ? user.role : (
+                {/* 🔒 SECURITY 7.1.5 — Own row and anonymised rows have no controls, for clarity only; the server refuses these changes too (OWASP A01) */}
+                {user.id === me.id || user.anonymised ? user.role : (
                   <select className="form-select form-select-sm" value={user.role} onChange={(event) => changeRole(user, event.target.value)}>
                     <option value="student">student</option>
                     <option value="instructor">instructor</option>
@@ -112,12 +151,22 @@ function UsersAdmin({ me }) {
                   </select>
                 )}
               </td>
-              <td>{user.status}</td>
-              <td>{user.hasSignedUp ? 'yes' : 'invited'}</td>
-              <td>
-                {user.id !== me.id && (user.status === 'active'
-                  ? <button className="btn btn-sm btn-outline-danger" onClick={() => changeStatus(user, 'disabled')}>Disable</button>
-                  : <button className="btn btn-sm btn-outline-success" onClick={() => changeStatus(user, 'active')}>Enable</button>)}
+              <td>{user.anonymised ? 'anonymised' : user.status}</td>
+              <td>{user.hasSignedUp ? 'yes' : user.anonymised ? '—' : 'invited'}</td>
+              <td className="text-nowrap">
+                {user.id !== me.id && !user.anonymised && (
+                  <>
+                    {user.status === 'active'
+                      ? <button className="btn btn-sm btn-outline-danger me-1" onClick={() => changeStatus(user, 'disabled')}>Disable</button>
+                      : <button className="btn btn-sm btn-outline-success me-1" onClick={() => changeStatus(user, 'active')}>Enable</button>}
+                    <button className="btn btn-sm btn-outline-secondary me-1"
+                      onClick={() => setEditing({ id: user.id, name: user.name, email: user.email })}>Correct</button>
+                    {/* GDPR erasure is only offered for disabled accounts (the server checks this too) */}
+                    {user.status === 'disabled' && (
+                      <button className="btn btn-sm btn-danger" onClick={() => anonymise(user)}>Anonymise</button>
+                    )}
+                  </>
+                )}
               </td>
             </tr>
           ))}

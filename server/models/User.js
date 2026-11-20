@@ -14,6 +14,8 @@ const userSchema = new mongoose.Schema({
   studentNumber: { type: String, trim: true, maxlength: 20 },
   // 🔒 SECURITY 7.5.5 — Disabled accounts are refused by the server (OWASP A01)
   status: { type: String, required: true, enum: ['active', 'disabled'], default: 'active' },
+  // Set when an admin anonymised the account (GDPR erasure, D22). Such an account can never be changed again.
+  anonymisedAt: { type: Date },
   createdAt: { type: Date, default: Date.now },
 }, { strict: 'throw', strictQuery: 'throw' });
 
