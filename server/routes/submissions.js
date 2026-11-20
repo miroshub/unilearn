@@ -6,6 +6,7 @@ const { allowFields } = require('../middleware/validate');
 const { requireOwnCourse, requireCourseAssignment } = require('../access');
 const { receivePdf } = require('../upload');
 const { storePdf, readPdf } = require('../fileCrypto');
+const { signText, receiptText, receiptFor } = require('../pki');
 const { logInfo } = require('../logger');
 
 // mergeParams: lets this router read :courseId and :assignmentId from the address it is mounted on (app.js)
@@ -46,18 +47,26 @@ router.put('/mine', requireRole('student'), checkCanSubmit, receivePdf, allowFie
     // Before the deadline a new upload replaces the old PDF and updates the time (D21)
     submission.submittedAt = new Date();
   }
-  // Encrypt the PDF and save its SHA-256 fingerprint (D38, fileCrypto.js)
+  // Encrypt the PDF with a new session key and save its SHA-256 fingerprint (D38, D40, fileCrypto.js)
   storePdf(submission, req.file.buffer);
+  // 🔒 SECURITY 7.3.8 — UniLearn signs the receipt (who, which file fingerprint, when) with its private key (OWASP A08)
+  // Non-repudiation: later, the university can't deny having received exactly this file at this time.
+  submission.receiptSignature = signText(receiptText(submission));
   await submission.save();
   logInfo(isFirstUpload ? 'Work submitted' : 'Work resubmitted',
     { actorId: req.user.id, assignmentId: req.assignment.id, submissionId: submission.id, bytes: req.file.size });
-  // The fingerprint is the student's receipt: the page compares it with the file they chose
-  res.status(isFirstUpload ? 201 : 200).json({ id: submission.id, submittedAt: submission.submittedAt, fileSha256: submission.fileSha256 });
+  // The fingerprint and signed receipt go back to the page, which checks both itself
+  res.status(isFirstUpload ? 201 : 200).json({
+    id: submission.id,
+    submittedAt: submission.submittedAt,
+    fileSha256: submission.fileSha256,
+    receipt: receiptFor(submission),
+  });
 });
 
 // GET /:submissionId/file: download one submitted PDF
 router.get('/:submissionId/file', async (req, res) => {
-  const submission = await Submission.findOne({ _id: req.params.submissionId, assignmentId: req.assignment._id }).select('+file');
+  const submission = await Submission.findOne({ _id: req.params.submissionId, assignmentId: req.assignment._id }).select('+file +wrappedKey');
   if (!submission) {
     return res.status(404).json({ error: 'Not found' });
   }

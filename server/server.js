@@ -2,12 +2,15 @@
 const app = require('./app');
 const { connectToDatabase } = require('./db');
 const { logInfo, logError } = require('./logger');
-const { getKey } = require('./fileCrypto');
+const { getMasterKey } = require('./fileCrypto');
+const { loadSigningIdentity } = require('./pki');
 
 const PORT = process.env.PORT || 3000;
 
 // Settings the server can't work without (in .env on your PC, in Render → Environment online)
-const REQUIRED_SETTINGS = ['MONGODB_URI', 'CLERK_PUBLISHABLE_KEY', 'CLERK_SECRET_KEY', 'FILE_ENCRYPTION_KEY'];
+const REQUIRED_SETTINGS = [
+  'MONGODB_URI', 'CLERK_PUBLISHABLE_KEY', 'CLERK_SECRET_KEY', 'FILE_ENCRYPTION_KEY', 'SIGNING_PRIVATE_KEY',
+];
 
 // Connect to Atlas first, so the site never runs without its database
 async function startServer() {
@@ -20,8 +23,11 @@ async function startServer() {
   if (process.env.NODE_ENV === 'production' && !process.env.ORIGIN_SECRET) {
     throw new Error('ORIGIN_SECRET is missing. Add it in Render → Environment (see SETUP_GUIDE 6.3).');
   }
-  // The PDF encryption key must be exactly 256 bits, or no upload or download could work (D38)
-  getKey();
+  // The PDF master key must be exactly 256 bits, or no upload or download could work (D38)
+  getMasterKey();
+  // 🔒 SECURITY 7.3.9 — Check the certificate chain and the signing key before serving anyone (D40)
+  const { signingCert } = loadSigningIdentity();
+  logInfo('Signing certificate OK', { subject: signingCert.subject, issuer: signingCert.issuer, validTo: signingCert.validTo });
   await connectToDatabase();
   app.listen(PORT, () => {
     logInfo('UniLearn server running', { url: `http://localhost:${PORT}` });

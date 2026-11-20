@@ -5,11 +5,15 @@ const mongoose = require('mongoose');
 const submissionSchema = new mongoose.Schema({
   assignmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Assignment', required: true },
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  // The PDF, encrypted with AES-256-GCM (D38, see fileCrypto.js).
+  // The PDF, encrypted with AES-256-GCM using its own session key (D38, D40, see fileCrypto.js).
   // "select: false" means lists never load the file; only a download asks for it.
   file: { type: Buffer, required: true, select: false },
+  // That session key, encrypted ("wrapped") with the master key; useless without the master key
+  wrappedKey: { type: Buffer, required: true, select: false },
   // SHA-256 fingerprint of the original PDF (64 hex characters), shown to the student as a receipt
   fileSha256: { type: String, required: true, match: /^[0-9a-f]{64}$/ },
+  // UniLearn's RSA signature over the receipt (pki.js receiptText): proof the server accepted this file
+  receiptSignature: { type: String, required: true },
   submittedAt: { type: Date, default: Date.now },
 }, { strict: 'throw', strictQuery: 'throw' });
 

@@ -7,6 +7,7 @@ const { requireSignIn, requireRole } = require('../middleware/auth');
 const { allowFields } = require('../middleware/validate');
 const { requireOwnCourse, requireCourseAssignment } = require('../access');
 const { writeAuditLog } = require('../audit');
+const { signText, gradeText, isGradeSignatureValid } = require('../pki');
 const { logInfo } = require('../logger');
 
 // mergeParams: lets this router read :courseId and :assignmentId from the address it is mounted on (app.js)
@@ -25,6 +26,8 @@ function toGradeRow(student, submission, grade, isInstructor) {
     submittedAt: submission ? submission.submittedAt : null,
     score: grade ? grade.score : null,
     gradedAt: grade ? grade.gradedAt : null,
+    // false = the score no longer matches UniLearn's signature (changed outside UniLearn)
+    signatureValid: grade ? isGradeSignatureValid(grade) : null,
   };
   // 🔒 SECURITY 7.2.2 — Only the course's instructor gets the link to the student's work and its fingerprint (OWASP A01)
   // Admins see scores only: §4 gives them grades, not student work (D37).
@@ -89,6 +92,8 @@ router.put('/:studentId', requireRole('instructor'), allowFields('score'), async
   grade.score = score;
   grade.gradedBy = req.user._id;
   grade.gradedAt = new Date();
+  // 🔒 SECURITY 7.3.8 — UniLearn signs the grade (student, assignment, score, who, when) with its private key (OWASP A08)
+  grade.signature = signText(gradeText(grade));
   // The unique index (student + assignment) turns two grades for the same work into a 409
   await grade.save();
 

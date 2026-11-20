@@ -4,6 +4,7 @@ const { Assignment, Submission, Grade } = require('../models');
 const { requireSignIn, requireRole } = require('../middleware/auth');
 const { allowFields } = require('../middleware/validate');
 const { requireOwnCourse } = require('../access');
+const { receiptFor, isGradeSignatureValid } = require('../pki');
 const { logInfo } = require('../logger');
 
 // mergeParams: lets this router read :courseId from the address it is mounted on (app.js)
@@ -33,7 +34,8 @@ router.get('/', requireSignIn, requireRole('admin', 'instructor', 'student'), re
 });
 
 // 🔒 SECURITY 7.2.2 — A student gets THEIR OWN work and grade only: both searches use their own ID (OWASP A01)
-// Adds to each assignment: their submission (ID, time, fingerprint), their score, and whether it is graded (= locked, D21)
+// Adds to each assignment: their submission (ID, time, fingerprint, signed receipt), their score with its
+// signature check, and whether it is graded (= locked, D21)
 async function addMyWork(student, list) {
   const assignmentIds = list.map((item) => item.id);
   const submissions = await Submission.find({ studentId: student._id, assignmentId: { $in: assignmentIds } });
@@ -41,9 +43,12 @@ async function addMyWork(student, list) {
   for (const item of list) {
     const mine = submissions.find((submission) => submission.assignmentId.equals(item.id));
     const myGrade = grades.find((grade) => grade.assignmentId.equals(item.id));
-    item.mySubmission = mine ? { id: mine.id, submittedAt: mine.submittedAt, fileSha256: mine.fileSha256 } : null;
+    item.mySubmission = mine
+      ? { id: mine.id, submittedAt: mine.submittedAt, fileSha256: mine.fileSha256, receipt: receiptFor(mine) }
+      : null;
     item.graded = Boolean(myGrade);
     item.myScore = myGrade ? myGrade.score : null;
+    item.myScoreSignatureValid = myGrade ? isGradeSignatureValid(myGrade) : null;
   }
 }
 

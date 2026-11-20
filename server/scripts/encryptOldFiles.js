@@ -1,29 +1,34 @@
-// One-off: encrypts the PDFs that were uploaded before file encryption existed (Phases 6–7, DECISIONS D38).
-// It finds every submission and material without a fingerprint, then fingerprints and encrypts it.
-// Safe to run twice: records that already have a fingerprint are skipped.
+// One-off: protects the PDFs uploaded before encryption and signatures existed (Phases 6–7, DECISIONS D38, D40).
+// For every submission and material without a fingerprint: fingerprint it, encrypt it with a new session key,
+// and (for submissions) sign its receipt. Safe to run twice: records that already have a fingerprint are skipped.
 // Usage: npm run encrypt-old-files --prefix server
 const mongoose = require('mongoose');
 const { connectToDatabase } = require('../db');
 const { Submission, Material } = require('../models');
-const { getKey, storePdf } = require('../fileCrypto');
+const { getMasterKey, storePdf } = require('../fileCrypto');
+const { loadSigningIdentity, signText, receiptText } = require('../pki');
 
-// Encrypt every not-yet-encrypted record of one model (Submission or Material); returns how many
-async function encryptAll(Model) {
+// Protect every not-yet-encrypted record of one model (Submission or Material); returns how many
+async function protectAll(Model) {
   const oldRecords = await Model.find({ fileSha256: { $exists: false } }).select('+file');
   for (const record of oldRecords) {
     // record.file is still the plain PDF here
     storePdf(record, record.file);
+    if (Model === Submission) {
+      record.receiptSignature = signText(receiptText(record));
+    }
     await record.save();
   }
   return oldRecords.length;
 }
 
-// Check the key, connect, encrypt both collections, report
+// Check the key and certificates, connect, protect both collections, report
 async function encryptOldFiles() {
-  getKey();
+  getMasterKey();
+  loadSigningIdentity();
   await connectToDatabase();
-  const submissions = await encryptAll(Submission);
-  const materials = await encryptAll(Material);
+  const submissions = await protectAll(Submission);
+  const materials = await protectAll(Material);
   console.log(`Encrypted ${submissions} submission(s) and ${materials} material file(s).`);
   await mongoose.disconnect();
 }

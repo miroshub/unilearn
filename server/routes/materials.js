@@ -41,7 +41,7 @@ router.post('/', requireRole('instructor'), receivePdf, allowFields('title'), as
 router.get('/:materialId/file', async (req, res) => {
   // 🔒 SECURITY 7.2.2 — The material must belong to the course that was checked above (OWASP A01)
   // Without "courseId" here, a student could put their own course in the address and another course's material ID after it.
-  const material = await Material.findOne({ _id: req.params.materialId, courseId: req.course._id }).select('+file');
+  const material = await Material.findOne({ _id: req.params.materialId, courseId: req.course._id }).select('+file +wrappedKey');
   if (!material) {
     return res.status(404).json({ error: 'Not found' });
   }

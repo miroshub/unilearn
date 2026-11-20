@@ -10,6 +10,8 @@ const gradeSchema = new mongoose.Schema({
   // The instructor who gave (or last changed) the grade, and when
   gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   gradedAt: { type: Date, default: Date.now },
+  // UniLearn's RSA signature over the grade (pki.js gradeText); a score changed outside UniLearn breaks it
+  signature: { type: String, required: true },
 }, { strict: 'throw', strictQuery: 'throw' });
 
 // One grade per student per assignment
