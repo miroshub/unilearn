@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@clerk/react';
 import { callApi, downloadFile, sha256Of, MAX_PDF_BYTES } from './api.js';
 import Fingerprint from './Fingerprint.jsx';
+import SignedReceipt from './SignedReceipt.jsx';
 
 // Student: their own work for one assignment — status, upload/replace before the deadline, download, score
 export function MyWork({ courseId, assignment, onChange }) {
@@ -48,9 +49,14 @@ export function MyWork({ courseId, assignment, onChange }) {
     downloadFile(getToken, `${address}/${mine.id}/file`, `${assignment.title}.pdf`).catch((err) => setProblem(err.message));
   }
 
-  // The student's own score (the server only ever sends their own, 7.2.2)
+  // The student's own score (the server only ever sends their own, 7.2.2), with its signature check (7.3.8)
   const myScore = assignment.myScore !== null && assignment.myScore !== undefined && (
-    <strong className="d-block">Score: {assignment.myScore} / {assignment.maxScore}</strong>
+    <div>
+      <strong>Score: {assignment.myScore} / {assignment.maxScore}</strong>
+      {assignment.myScoreSignatureValid
+        ? <small className="text-success ms-1" title="UniLearn's digital signature on this grade is valid">✔ signed</small>
+        : <small className="text-danger d-block">⚠ This grade doesn't match UniLearn's signature. Contact your instructor.</small>}
+    </div>
   );
 
   if (assignment.type === 'exam') {
@@ -65,6 +71,7 @@ export function MyWork({ courseId, assignment, onChange }) {
         : <small className="text-muted d-block">Not submitted</small>}
       {mine && <button className="btn btn-sm btn-link px-0" onClick={download}>Download my PDF</button>}
       {mine && <Fingerprint sha256={mine.fileSha256} />}
+      {mine && <SignedReceipt receipt={mine.receipt} fileSha256={mine.fileSha256} />}
       {receiptCheck === 'match' && <small className="text-success d-block">✔ The server received exactly your file (SHA-256 matches).</small>}
       {receiptCheck === 'mismatch' && <small className="text-danger d-block">The server's fingerprint differs from your file. Upload it again.</small>}
       {/* 🔒 SECURITY 7.1.5 — Upload hidden once graded or past the deadline, for clarity; the server refuses anyway (OWASP A01) */}

@@ -41,6 +41,20 @@ export async function sha256Of(file) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+// Turn base64 text into bytes, the form Web Crypto works with
+function base64ToBytes(base64) {
+  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+}
+
+// 🔒 SECURITY 7.3.8 — The BROWSER checks UniLearn's RSA-PSS signature with the public key from its certificate (OWASP A08)
+// True only if "text" is exactly what UniLearn's private key signed. Change one character and it's false.
+export async function verifySignature(publicKeySpki, signature, text) {
+  const publicKey = await crypto.subtle.importKey('spki', base64ToBytes(publicKeySpki),
+    { name: 'RSA-PSS', hash: 'SHA-256' }, false, ['verify']);
+  return crypto.subtle.verify({ name: 'RSA-PSS', saltLength: 32 }, publicKey, base64ToBytes(signature),
+    new TextEncoder().encode(text));
+}
+
 // Download a file from our API (with the token) and save it under the given name
 export async function downloadFile(getToken, path, fileName) {
   const token = await getToken();

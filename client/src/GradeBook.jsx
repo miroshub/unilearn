@@ -85,6 +85,9 @@ function GradeBook({ courseId, assignment, me }) {
                   ) : (
                     <span>{row.score ?? '—'}</span>
                   )}
+                  {/* The server re-checks UniLearn's digital signature on every grade it shows (7.3.8) */}
+                  {row.signatureValid === true && <small className="text-success">✔ signed</small>}
+                  {row.signatureValid === false && <small className="text-danger">⚠ signature invalid: changed outside UniLearn</small>}
                 </td>
               </tr>
             ))}
