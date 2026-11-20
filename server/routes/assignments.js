@@ -32,15 +32,18 @@ router.get('/', requireSignIn, requireRole('admin', 'instructor', 'student'), re
   res.json(list);
 });
 
-// For a student: add THEIR OWN submission (ID + time) to each assignment, and whether it is graded (= locked, D21)
+// 🔒 SECURITY 7.2.2 — A student gets THEIR OWN work and grade only: both searches use their own ID (OWASP A01)
+// Adds to each assignment: their submission (ID, time, fingerprint), their score, and whether it is graded (= locked, D21)
 async function addMyWork(student, list) {
   const assignmentIds = list.map((item) => item.id);
   const submissions = await Submission.find({ studentId: student._id, assignmentId: { $in: assignmentIds } });
   const grades = await Grade.find({ studentId: student._id, assignmentId: { $in: assignmentIds } });
   for (const item of list) {
     const mine = submissions.find((submission) => submission.assignmentId.equals(item.id));
-    item.mySubmission = mine ? { id: mine.id, submittedAt: mine.submittedAt } : null;
-    item.graded = grades.some((grade) => grade.assignmentId.equals(item.id));
+    const myGrade = grades.find((grade) => grade.assignmentId.equals(item.id));
+    item.mySubmission = mine ? { id: mine.id, submittedAt: mine.submittedAt, fileSha256: mine.fileSha256 } : null;
+    item.graded = Boolean(myGrade);
+    item.myScore = myGrade ? myGrade.score : null;
   }
 }
 

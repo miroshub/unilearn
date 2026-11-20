@@ -18,6 +18,7 @@ const courseRoutes = require('./routes/courses');
 const assignmentRoutes = require('./routes/assignments');
 const materialRoutes = require('./routes/materials');
 const submissionRoutes = require('./routes/submissions');
+const gradeRoutes = require('./routes/grades');
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 // The course sub-addresses come before /api/courses (longest first), so a request is handled by one router only
 app.use('/api/courses/:courseId/assignments/:assignmentId/submissions', submissionRoutes);
+app.use('/api/courses/:courseId/assignments/:assignmentId/grades', gradeRoutes);
 app.use('/api/courses/:courseId/assignments', assignmentRoutes);
 app.use('/api/courses/:courseId/materials', materialRoutes);
 app.use('/api/courses', courseRoutes);

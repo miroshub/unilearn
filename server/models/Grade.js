@@ -5,10 +5,11 @@ const mongoose = require('mongoose');
 const gradeSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   assignmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Assignment', required: true },
-  // Checked against the assignment's maxScore when grading (Phase 8)
+  // Checked against the assignment's maxScore by the grading route
   score: { type: Number, required: true, min: 0 },
-  // The instructor who gave the grade
+  // The instructor who gave (or last changed) the grade, and when
   gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  gradedAt: { type: Date, default: Date.now },
 }, { strict: 'throw', strictQuery: 'throw' });
 
 // One grade per student per assignment
