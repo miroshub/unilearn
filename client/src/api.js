@@ -58,6 +58,18 @@ export async function verifySignature(publicKeySpki, signature, text) {
     new TextEncoder().encode(text));
 }
 
+// Make the browser save some bytes (a Blob) as a file with the given name
+function saveBlob(blob, fileName) {
+  // Put the bytes in a temporary in-browser link and "click" it, so the browser saves the file
+  const fileUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = fileUrl;
+  link.download = fileName;
+  link.click();
+  // Free the memory a moment later, once the download has started
+  setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
+}
+
 // Download a file from our API (with the token) and save it under the given name
 export async function downloadFile(getToken, path, fileName) {
   const token = await getToken();
@@ -65,12 +77,11 @@ export async function downloadFile(getToken, path, fileName) {
   if (!response.ok) {
     throw await toError(response);
   }
-  // Put the bytes in a temporary in-browser link and "click" it, so the browser saves the file
-  const fileUrl = URL.createObjectURL(await response.blob());
-  const link = document.createElement('a');
-  link.href = fileUrl;
-  link.download = fileName;
-  link.click();
-  // Free the memory a moment later, once the download has started
-  setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
+  saveBlob(await response.blob(), fileName);
+}
+
+// GDPR "Download my data": fetch everything the server holds about this user and save it as a readable JSON file
+export async function downloadMyData(getToken) {
+  const data = await callApi(getToken, '/api/me/data');
+  saveBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), 'my-unilearn-data.json');
 }

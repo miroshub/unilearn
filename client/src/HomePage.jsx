@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth, UserButton, UserProfile, SignOutButton } from '@clerk/react';
-import { callApi } from './api.js';
+import { callApi, downloadMyData } from './api.js';
+import { InfoLinks } from './InfoPages.jsx';
 import AdminPage from './AdminPage.jsx';
 import MyCourses from './MyCourses.jsx';
 
@@ -9,6 +10,7 @@ function HomePage() {
   const { getToken } = useAuth();
   const [me, setMe] = useState(null);
   const [problem, setProblem] = useState(null);
+  const [dataProblem, setDataProblem] = useState(null);
 
   // Ask the server once when the page opens
   useEffect(() => {
@@ -17,6 +19,12 @@ function HomePage() {
       .then(setMe)
       .catch((err) => setProblem({ error: err.message, code: err.code }));
   }, [getToken]);
+
+  // GDPR right of access: save everything UniLearn holds about this user as a JSON file
+  function saveMyData() {
+    setDataProblem(null);
+    downloadMyData(getToken).catch((err) => setDataProblem(err.message));
+  }
 
   // Staff without two-step verification: explain and show Clerk's account page to turn it on
   if (problem?.code === 'MFA_REQUIRED') {
@@ -58,6 +66,12 @@ function HomePage() {
       <p className="text-muted">Signed in as {me.name}</p>
       {/* 🔒 SECURITY 7.1.5 — Each role sees its own dashboard, for clarity; the server checks the role on every call (OWASP A01) */}
       {me.role === 'admin' ? <AdminPage me={me} /> : <MyCourses me={me} />}
+      <hr className="mt-5" />
+      <div className="text-center">
+        <button className="btn btn-sm btn-outline-secondary" onClick={saveMyData}>Download my data</button>
+        {dataProblem && <small className="text-danger d-block">{dataProblem}</small>}
+      </div>
+      <InfoLinks />
     </div>
   );
 }

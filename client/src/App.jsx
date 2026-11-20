@@ -1,5 +1,6 @@
 import { Show, SignIn, SignUp, SignOutButton, useUser } from '@clerk/react';
 import HomePage from './HomePage.jsx';
+import { PrivacyNotice, SecurityTips, InfoLinks } from './InfoPages.jsx';
 
 // True when the visitor arrived by clicking the link in an invitation email
 const cameFromInvitation = new URLSearchParams(window.location.search).has('__clerk_ticket');
@@ -22,8 +23,16 @@ function InvitationWhileSignedIn() {
   );
 }
 
-// Main page: the sign-in box for visitors, the home page for signed-in users
+// Main page: the public info pages by address, else the sign-in box for visitors and the home page for signed-in users
 function App() {
+  // The two public pages (Express sends the React page for every address, so these work as normal links)
+  if (window.location.pathname === '/privacy') {
+    return <div className="container py-5"><PrivacyNotice /></div>;
+  }
+  if (window.location.pathname === '/security-tips') {
+    return <div className="container py-5"><SecurityTips /></div>;
+  }
+
   return (
     <div className="container py-5">
       <Show when="signed-out">
@@ -33,6 +42,7 @@ function App() {
           {/* After sign-up, go to "/" (without the invitation code), so the new user lands on their home page */}
           {cameFromInvitation ? <SignUp routing="hash" forceRedirectUrl="/" /> : <SignIn routing="hash" />}
         </div>
+        <InfoLinks />
       </Show>
       <Show when="signed-in">
         {cameFromInvitation ? <InvitationWhileSignedIn /> : <HomePage />}
