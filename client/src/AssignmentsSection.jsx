@@ -1,15 +1,18 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/react';
 import { callApi } from './api.js';
-import { MyWork, SubmissionsList } from './Submissions.jsx';
+import { MyWork } from './Submissions.jsx';
+import GradeBook from './GradeBook.jsx';
 
-// One course's assignments and exams. Instructors also get a form to add one.
+// One course's assignments and exams. Instructors also get a form to add one, and a grade book per assignment.
+// Admins see the same list with a read-only grade book.
 function AssignmentsSection({ course, me }) {
   const { getToken } = useAuth();
   const [assignments, setAssignments] = useState([]);
   const [message, setMessage] = useState(null);
-  // Instructor: the assignment whose submissions are opened below its row
+  // Instructor or admin: the assignment whose grade book is opened below its row
   const [openId, setOpenId] = useState(null);
+  const isStaff = me.role === 'instructor' || me.role === 'admin';
   const address = `/api/courses/${course.id}/assignments`;
 
   // Load the course's assignments from the server
@@ -88,16 +91,16 @@ function AssignmentsSection({ course, me }) {
                   <td>{assignment.maxScore}</td>
                   <td>
                     {me.role === 'student' && <MyWork courseId={course.id} assignment={assignment} onChange={loadAssignments} />}
-                    {me.role === 'instructor' && assignment.type === 'assignment' && (
+                    {isStaff && (
                       <button className="btn btn-sm btn-outline-secondary" onClick={() => setOpenId(openId === assignment.id ? null : assignment.id)}>
-                        {openId === assignment.id ? 'Hide submissions' : 'Submissions'}
+                        {openId === assignment.id ? 'Hide grades' : 'Grades'}
                       </button>
                     )}
                   </td>
                 </tr>
                 {openId === assignment.id && (
                   <tr>
-                    <td colSpan={5}><SubmissionsList courseId={course.id} assignment={assignment} /></td>
+                    <td colSpan={5}><GradeBook courseId={course.id} assignment={assignment} me={me} /></td>
                   </tr>
                 )}
               </Fragment>

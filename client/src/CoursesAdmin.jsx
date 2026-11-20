@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/react';
 import { callApi } from './api.js';
+import AssignmentsSection from './AssignmentsSection.jsx';
 
 const EMPTY_FORM = { code: '', title: '', term: '' };
 
-// Admin: create courses, then pick one to assign instructors and enrol students
-function CoursesAdmin() {
+// Admin: create courses, then pick one to assign instructors, enrol students and view grades (read only)
+function CoursesAdmin({ me }) {
   const { getToken } = useAuth();
   const [courses, setCourses] = useState([]);
   const [users, setUsers] = useState([]);
@@ -139,6 +140,9 @@ function CoursesAdmin() {
             <h4 className="h6 mt-4">Students</h4>
             <PeopleList people={selected.students} onRemove={removeStudent} />
             <AddPersonSelect label="Enrol a student…" choices={choicesFor('student', selected.students)} onAdd={addStudent} />
+
+            {/* Admins view all grades read-only (proposal §4); "key" reloads the list when another course is opened */}
+            <AssignmentsSection key={selected.id} course={selected} me={me} />
           </div>
         </div>
       )}

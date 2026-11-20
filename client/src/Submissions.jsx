@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@clerk/react';
 import { callApi, downloadFile, sha256Of, MAX_PDF_BYTES } from './api.js';
 import Fingerprint from './Fingerprint.jsx';
@@ -78,49 +78,5 @@ export function MyWork({ courseId, assignment, onChange }) {
       )}
       {problem && <small className="text-danger d-block">{problem}</small>}
     </div>
-  );
-}
-
-// Instructor: everyone's submissions for one assignment, each with a download button
-export function SubmissionsList({ courseId, assignment }) {
-  const { getToken } = useAuth();
-  const [submissions, setSubmissions] = useState(null);
-  const [problem, setProblem] = useState(null);
-  const address = `/api/courses/${courseId}/assignments/${assignment.id}/submissions`;
-
-  // Load the list once when it is opened
-  useEffect(() => {
-    callApi(getToken, address).then(setSubmissions).catch((err) => setProblem(err.message));
-  }, [getToken, address]);
-
-  // Download one student's PDF, named after the student
-  function download(submission) {
-    downloadFile(getToken, `${address}/${submission.id}/file`, `${assignment.title} - ${submission.studentName}.pdf`)
-      .catch((err) => setProblem(err.message));
-  }
-
-  if (problem) {
-    return <div className="text-danger small">{problem}</div>;
-  }
-  if (!submissions) {
-    return <div className="small">Loading…</div>;
-  }
-  if (submissions.length === 0) {
-    return <div className="text-muted small">No submissions yet.</div>;
-  }
-  return (
-    <ul className="list-group list-group-flush">
-      {/* 🔒 SECURITY 7.1.1 — Student names shown as plain text by React, never as HTML (OWASP A03) */}
-      {submissions.map((submission) => (
-        <li key={submission.id} className="list-group-item d-flex justify-content-between align-items-center px-0">
-          <span>
-            {submission.studentName}
-            {submission.studentNumber && <small className="text-muted"> ({submission.studentNumber})</small>}
-            <small className="text-muted ms-2">{new Date(submission.submittedAt).toLocaleString()}</small>
-          </span>
-          <button className="btn btn-sm btn-outline-primary" onClick={() => download(submission)}>Download</button>
-        </li>
-      ))}
-    </ul>
   );
 }

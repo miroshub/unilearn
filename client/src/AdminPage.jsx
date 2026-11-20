@@ -24,7 +24,7 @@ function AdminPage({ me }) {
         ))}
       </ul>
       {tab === 'users' && <UsersAdmin me={me} />}
-      {tab === 'courses' && <CoursesAdmin />}
+      {tab === 'courses' && <CoursesAdmin me={me} />}
       {tab === 'audit' && <AuditLog />}
     </div>
   );

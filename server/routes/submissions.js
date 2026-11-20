@@ -32,18 +32,7 @@ async function checkCanSubmit(req, res, next) {
   next();
 }
 
-// GET /: the instructor's list of everyone's submissions for this assignment (no files)
-router.get('/', requireRole('instructor'), async (req, res) => {
-  const submissions = await Submission.find({ assignmentId: req.assignment._id })
-    .sort({ submittedAt: 1 })
-    .populate('studentId', 'name studentNumber');
-  res.json(submissions.map((submission) => ({
-    id: submission.id,
-    studentName: submission.studentId ? submission.studentId.name : 'Unknown student',
-    studentNumber: submission.studentId ? submission.studentId.studentNumber : undefined,
-    submittedAt: submission.submittedAt,
-  })));
-});
+// (The instructor's list of submissions is part of the grade book: routes/grades.js)
 
 // PUT /mine: a student uploads their PDF, or replaces it before the deadline (one per student, D21).
 // Order: role → deadline / lock rules → only then read the file (size + PDF check) → no other form fields.
