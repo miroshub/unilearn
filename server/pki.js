@@ -108,8 +108,12 @@ function isGradeSignatureValid(grade) {
   return valid;
 }
 
-// A student's signed receipt as sent to the browser: the text, the signature, and the server's own check of it
+// A student's signed receipt as sent to the browser: the text, the signature, and the server's own check of it.
+// null for a file uploaded before signatures existed (until scripts/encryptOldFiles.js has signed it).
 function receiptFor(submission) {
+  if (!submission.receiptSignature) {
+    return null;
+  }
   const text = receiptText(submission);
   return { text, signature: submission.receiptSignature, signatureValid: verifyText(text, submission.receiptSignature) };
 }

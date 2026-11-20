@@ -49,6 +49,9 @@ function base64ToBytes(base64) {
 // 🔒 SECURITY 7.3.8 — The BROWSER checks UniLearn's RSA-PSS signature with the public key from its certificate (OWASP A08)
 // True only if "text" is exactly what UniLearn's private key signed. Change one character and it's false.
 export async function verifySignature(publicKeySpki, signature, text) {
+  if (!signature) {
+    return false;
+  }
   const publicKey = await crypto.subtle.importKey('spki', base64ToBytes(publicKeySpki),
     { name: 'RSA-PSS', hash: 'SHA-256' }, false, ['verify']);
   return crypto.subtle.verify({ name: 'RSA-PSS', saltLength: 32 }, publicKey, base64ToBytes(signature),

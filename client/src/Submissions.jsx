@@ -72,6 +72,7 @@ export function MyWork({ courseId, assignment, onChange }) {
       {mine && <button className="btn btn-sm btn-link px-0" onClick={download}>Download my PDF</button>}
       {mine && <Fingerprint sha256={mine.fileSha256} />}
       {mine && <SignedReceipt receipt={mine.receipt} fileSha256={mine.fileSha256} />}
+      {mine && !mine.receipt && <small className="text-muted d-block">No signed receipt: uploaded before receipts were signed.</small>}
       {receiptCheck === 'match' && <small className="text-success d-block">✔ The server received exactly your file (SHA-256 matches).</small>}
       {receiptCheck === 'mismatch' && <small className="text-danger d-block">The server's fingerprint differs from your file. Upload it again.</small>}
       {/* 🔒 SECURITY 7.1.5 — Upload hidden once graded or past the deadline, for clarity; the server refuses anyway (OWASP A01) */}
