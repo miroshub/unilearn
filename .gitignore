@@ -22,5 +22,10 @@ graphify-out/
 Thumbs.db
 
 # Private working notes (kept on Omar's PC only)
+docs/
 DECISIONS.md
 SETUP_GUIDE.md
+AGENTS.md
+PLAN.md
+*.PLAN.md
+SECURITY_MAP.md
