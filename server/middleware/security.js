@@ -17,12 +17,16 @@ const clerkAddress = getClerkAddress() ? [getClerkAddress()] : [];
 // 🔒 SECURITY 7.2.5 — Standard security headers (OWASP A05)
 // helmet adds headers like Content-Security-Policy (only load scripts from our own site)
 // and X-Frame-Options (other sites can't put UniLearn in a frame = no clickjacking).
-// The only outside site allowed is our own Clerk address, for the sign-in screens (DECISIONS D31).
+// The only outside sites allowed are our own Clerk address, for the sign-in screens (DECISIONS D31),
+// and Clerk Protect, Clerk's fraud check that must run before a new account can sign up (DECISIONS D42).
+const clerkProtect = 'https://*.protect.clerk.com';
 const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
-      'script-src': ["'self'", ...clerkAddress],
-      'connect-src': ["'self'", ...clerkAddress],
+      'script-src': ["'self'", ...clerkAddress, clerkProtect],
+      // ":*" because Clerk Protect also answers on ports other than 443 (Clerk's CSP docs)
+      'connect-src': ["'self'", ...clerkAddress, `${clerkProtect}:*`],
+      'frame-src': ["'self'", clerkProtect],
       'img-src': ["'self'", 'data:', 'https://img.clerk.com'],
       'worker-src': ["'self'", 'blob:'],
       // Clerk's sign-in box sets its own styles at runtime, so inline styles must be allowed.
